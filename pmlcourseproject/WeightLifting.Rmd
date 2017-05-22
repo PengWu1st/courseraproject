@@ -1,0 +1,148 @@
+---
+title: "Recognition of Weight Lifting"
+author: "Peng Wu"
+date: "May 18, 2017"
+output:
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Executive Summary
+
+In this project, we try to predicted 5 different way of weitght lifting using machine learning algrithms. The data set used here is from http://groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset). We peformed some data preprocessing ,feature selection and model selection. The best model we found is knn. The accuracy rate is 99%.
+
+## Download and Loading data
+
+```{r warning = FALSE, message = FALSE}
+library(caret)
+library(ggplot2)
+
+trainRaw <- read.csv("./pml-training.csv",na.string=c("#DIV/0!","NA"))
+testRaw <- read.csv("./pml-testing.csv",na.string=c("#DIV/0!","NA"))
+```
+
+## Data Preprocessing
+
+```{r}
+dim(trainRaw)
+```
+
+We found thar There 160 variables in each observation, which is very large. We should consider reducing the number of varibles.
+
+First, we found that the first 7 columns seems irelevant to the outcome.
+
+```{R}
+names(trainRaw[1:7])
+```
+
+```{R}
+plot(trainRaw[c(1:7,160)])
+```
+
+Looking at the plot we found that only X have a clear impact on classe. But X is only a sequence number, so it should be removed also.
+
+```{R}
+irelevantVar <-c(1:7)
+```
+
+Another issue is that there are a lot of variables do not have any value at all in the testing data set. Since we are not getting these input at all, I think we are safe to remove them. 
+
+```{r}
+nullCol <- which(colSums(!is.na(testRaw))==0)
+removedCol <- c(irelevantVar,nullCol)
+training <- trainRaw[,-removedCol]
+testing <- testRaw[,-removedCol]
+
+```
+
+## Data Slicing
+
+Reserve some data for validation purpose.
+```{r warning = FALSE, message = FALSE}
+set.seed(456)
+inTrain <- createDataPartition(training$classe, p = .70, list = FALSE)
+trainPart <- training[inTrain,]
+validPart <- training[-inTrain,]
+```
+
+## Reducing Dimesions
+
+Use PCA method to reduce the number of dimesions.
+
+```{R}
+prePro <- preProcess(trainPart, method = "pca" ,thresh = 0.8)
+trainPartPC <- predict(prePro, trainPart)
+validPartPC <- predict(prePro, validPart)
+```
+
+## Model Training
+
+We choose k-Nearest Neighbors and Bagged CART to bulid our model. For each algrithm, we build two models, with or without PCA preprocessing.
+
+### k-Nearest Neighbors
+
+#### k-NN with PCA
+
+```{r warning = FALSE, message = FALSE}
+kknnPC <- train(classe ~., trainPartPC, method = "kknn")
+kknnPCPred <- predict(kknnPC, validPartPC)
+cmkknnPC <- confusionMatrix(kknnPCPred,validPart$classe)
+cmkknnPC
+```
+
+#### k-NN without PCA
+
+```{r warning = FALSE, message = FALSE}
+kknn <- train(classe ~., trainPart, method = "kknn")
+kknnPred <- predict(kknn, validPart)
+cmkknn <- confusionMatrix(kknnPred,validPart$classe)
+cmkknn
+```
+
+### Bagged CART 
+
+#### Bagged CART PCA
+
+```{r warning = FALSE, message = FALSE}
+treebagPC <- train(classe ~., trainPartPC, method = "treebag")
+treebagPCPred <- predict(treebagPC, validPartPC)
+cmtreebagPC <- confusionMatrix(treebagPCPred,validPart$classe)
+cmtreebagPC
+```
+
+#### Bagged CART PCA
+
+```{r warning = FALSE, message = FALSE}
+treebag <- train(classe ~., trainPart, method = "treebag")
+treebagPred <- predict(treebag, validPart)
+cmtreebag <- confusionMatrix(treebagPred,validPart$classe)
+cmtreebag
+```
+
+```{R warning = FALSE, message = FALSE}
+method <- c('knn','knnPC','treebag','treebagPC')
+accuracy <- c(cmkknn$overall[1],
+              cmkknnPC$overall[1],
+              cmtreebag$overall[1],
+              cmtreebagPC$overall[1])
+processtime <- c(kknn$times$everything[3],
+                 kknnPC$times$everything[3],
+                 treebag$times$everything[3],
+                 treebagPC$times$everything[3])
+modelCompare <- data.frame(method = method, accuracy = accuracy, processtime = processtime) 
+
+g <- ggplot(data = modelCompare, aes(x = processtime, y = accuracy,color = method))
+g + geom_point()
+
+```
+
+We can see that the knn without PCA model gives the highest accuarcy and its processing time is also acceptable. Thus, we choose knn as the final model.
+
+## Prediction
+
+```{R}
+data.frame(testing[53],prediction=predict(kknn,testing))
+```
