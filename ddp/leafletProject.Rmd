@@ -1,0 +1,42 @@
+---
+title: "leaflet practise"
+author: "Peng Wu"
+date: "27 May 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+
+```{r message=FALSE}
+library(leaflet)
+df <- data.frame(
+        lng = c(113.34023, 113.3475),
+        lat = c(23.14333, 23.14371),
+        lab = c("office","home")
+)
+m <- leaflet(df,options = leafletOptions(minZoom = 0, maxZoom = 18)) %>%
+        setView(lng=mean(df$lng), lat=mean(df$lat), zoom = 12) %>%
+        addTiles() %>%
+        addCircles(~lng, ~lat) %>%
+        addAwesomeMarkers(~lng, ~lat,label=~lab) %>%
+        print()
+
+```
+
+## Province
+
+
+```{r message=FALSE}
+library(maps)
+mapStates <- map("state", fill = TRUE, plot = FALSE) %>% 
+        leaflet() %>%
+        addProviderTiles(providers$Stamen) %>%
+        addPolygons(fillColor = topo.colors(10, alpha = NULL), stroke = FALSE) %>%
+        print()
+```
+
