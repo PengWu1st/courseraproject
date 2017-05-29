@@ -17,13 +17,16 @@ library(leaflet)
 df <- data.frame(
         lng = c(113.34023, 113.3475),
         lat = c(23.14333, 23.14371),
-        lab = c("office","home")
+        lab = c("office","home"),
+        address = c("No. 898 Tianhe North Road", "Bulideing No. 35, South China Normal University")
 )
 m <- leaflet(df,options = leafletOptions(minZoom = 0, maxZoom = 18)) %>%
-        setView(lng=mean(df$lng), lat=mean(df$lat), zoom = 12) %>%
+        setView(lng=mean(df$lng), lat=mean(df$lat), zoom = 16) %>%
         addTiles() %>%
+#        addPopups(~lng, ~lat, ~address, 
+#  options = popupOptions(closeButton = FALSE)) %>%
         addCircles(~lng, ~lat) %>%
-        addAwesomeMarkers(~lng, ~lat,label=~lab) %>%
+        addAwesomeMarkers(~lng, ~lat,label=~lab, popup = ~address) %>%
         print()
 
 ```
